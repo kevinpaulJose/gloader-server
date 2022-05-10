@@ -108,9 +108,10 @@ class IndexController {
       });
       if (ongoingDownloads.length >= 1 || ongoingUploads.length >= 1) {
         await fireService.addDownloads(id, userId, url, fileName, 'Pending', folderName, token);
+        // update if already there
       } else {
         const file = fs.createWriteStream('public/' + userId + '_' + fileName);
-        fireService.addDownloads(id, userId, url, fileName, 'Uploading', folderName, token).then(() => {
+        fireService.addDownloads(id, userId, url, fileName, 'Downloading', folderName, token).then(() => {
           const dnld = https.get(url, response => {
             response.pipe(file);
             const len = parseInt(response.headers['content-length'], 10);

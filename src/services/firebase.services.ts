@@ -4,24 +4,29 @@ import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc } 
 
 export class FireService {
   async addDownloads(id: String, userId: String, url: String, fileName: String, status: String, folderName: String, token: String) {
-    try {
-      const docRef = await addDoc(collection(firedb, 'downloads'), {
-        id: id,
-        userId: userId,
-        url: url,
-        completed: '0',
-        fileName: fileName,
-        percentage: '0',
-        status: status,
-        total: '0',
-        added: Timestamp.fromDate(new Date()),
-        stopped: false,
-        folderName: folderName,
-        token: token,
-      });
-      console.log('Download Document written with ID: ', docRef.id);
-    } catch (e) {
-      console.error('Error adding Download document: ', e);
+    const downloadItem = await this.getDownloads(id);
+    if (downloadItem.length > 0) {
+      this.updateDownloads(id, '0', '0', 'Downloading', '0', folderName, fileName, token, userId, false);
+    } else {
+      try {
+        const docRef = await addDoc(collection(firedb, 'downloads'), {
+          id: id,
+          userId: userId,
+          url: url,
+          completed: '0',
+          fileName: fileName,
+          percentage: '0',
+          status: status,
+          total: '0',
+          added: Timestamp.fromDate(new Date()),
+          stopped: false,
+          folderName: folderName,
+          token: token,
+        });
+        console.log('Download Document written with ID: ', docRef.id);
+      } catch (e) {
+        console.error('Error adding Download document: ', e);
+      }
     }
   }
   async getDownloads(id: String) {
