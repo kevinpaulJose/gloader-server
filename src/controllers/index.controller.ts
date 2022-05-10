@@ -108,16 +108,15 @@ class IndexController {
           const interval = setInterval(async () => {
             if (body != '') {
               const entry = await fireService.getDownloads(id);
-              if (entry.length == 0) {
+              if (entry[0].stopped) {
                 file.close();
                 // dnld._destroy((e, e1) => {});
                 console.log('Download interupted');
                 dnld.end();
-                fs.unlinkSync('public/' + fileName);
+                fs.unlinkSync('public/' + userId + '_' + fileName);
                 clearInterval(interval);
                 console.log('Interval Cleared');
               } else {
-                // console.log(body);
                 await fireService.updateDownloads(
                   id,
                   (cur / 1048576).toFixed(2).toString(),
@@ -128,6 +127,7 @@ class IndexController {
                   fileName,
                   token,
                   userId,
+                  false,
                 );
               }
             } else {
@@ -137,6 +137,7 @@ class IndexController {
           }, 6000);
 
           file.on('finish', async () => {
+            const entry = await fireService.getDownloads(id);
             file.close();
             console.log('Download Completed');
             await fireService.updateDownloads(
@@ -149,6 +150,7 @@ class IndexController {
               fileName,
               token,
               userId,
+              entry[0].stopped,
             );
             body = '';
           });

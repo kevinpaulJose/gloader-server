@@ -3,8 +3,6 @@ import { firedb } from '@/databases/firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc } from 'firebase/firestore';
 
 export class FireService {
-  downloadRef = collection(firedb, 'downloads');
-  uploadRef = collection(firedb, 'uploads');
   async addDownloads(id: String, userId: String, url: String, fileName: String) {
     try {
       const docRef = await addDoc(collection(firedb, 'downloads'), {
@@ -17,6 +15,7 @@ export class FireService {
         status: 'pending',
         total: '0',
         added: Timestamp.fromDate(new Date()),
+        stopped: false,
       });
       console.log('Download Document written with ID: ', docRef.id);
     } catch (e) {
@@ -24,7 +23,8 @@ export class FireService {
     }
   }
   async getDownloads(id: String) {
-    const q = query(this.downloadRef, where('id', '==', id));
+    const downloadRef = collection(firedb, 'downloads');
+    const q = query(downloadRef, where('id', '==', id));
     const querySnapshot = await getDocs(q);
     const retData = [];
     querySnapshot.forEach(doc => {
@@ -33,8 +33,9 @@ export class FireService {
     return retData;
   }
 
-  async updateDownloads(id, completed: String, percentage: String, status: String, total: String, folderName, fileName, token, userId) {
-    const q = query(this.downloadRef, where('id', '==', id));
+  async updateDownloads(id, completed: String, percentage: String, status: String, total: String, folderName, fileName, token, userId, stopped) {
+    const downloadRef = collection(firedb, 'downloads');
+    const q = query(downloadRef, where('id', '==', id));
     const querySnapshot = await getDocs(q);
     let docId = '';
     let count = 0;
@@ -49,8 +50,9 @@ export class FireService {
         percentage: percentage,
         status: status,
         total: total,
+        stopped: stopped,
       });
-      if (status == 'Completed') {
+      if (status == 'Completed' && !stopped) {
         const indexController = new IndexController();
         indexController.upload({ folderFromApi: folderName, downloadId: id, fileNameFromApi: fileName, id: id, token: token, userId: userId });
       }
@@ -72,7 +74,8 @@ export class FireService {
     }
   }
   async updateUploads(id: String, status: String) {
-    const q = query(this.uploadRef, where('id', '==', id));
+    const uploadRef = collection(firedb, 'uploads');
+    const q = query(uploadRef, where('id', '==', id));
     const querySnapshot = await getDocs(q);
     let docId = '';
     querySnapshot.forEach(doc => {
