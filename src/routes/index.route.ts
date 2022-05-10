@@ -3,7 +3,7 @@ import IndexController from '@controllers/index.controller';
 import { Routes } from '@interfaces/routes.interface';
 
 class IndexRoute implements Routes {
-  public path = '/';
+  public path = '/upload';
   public pathUrl = '/url';
   public router = Router();
   public indexController = new IndexController();

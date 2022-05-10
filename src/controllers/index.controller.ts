@@ -26,9 +26,9 @@ class IndexController {
     }
     (async () => {
       const googleDriveService = new GoogleDriveService(driveClientId, driveClientSecret, driveRedirectUri, driveRefreshToken);
-      const finalPath = path.resolve(__dirname, '../../public/sample.mp4');
       const folderName = folderFromApi;
       const fileName = fileNameFromApi;
+      const finalPath = path.resolve(__dirname, '../../public/' + fileName);
       if (!fs.existsSync(finalPath)) {
         throw new Error('File not found!');
       }
@@ -66,32 +66,65 @@ class IndexController {
     }
     try {
       // const fileNameWithExt = fileName + path.extname(url);
-      const file = fs.createWriteStream('public/' + 'sample.mp4');
+      const defaults = [
+        '.mp4',
+        '.mp3',
+        '.mov',
+        '.wmv',
+        '.avi',
+        '.mkv',
+        '.webm',
+        '.mp3',
+        '.aac',
+        '.wav',
+        '.jpeg',
+        '.raw',
+        '.zip',
+        '.rar',
+        '.pdf',
+        '.exe',
+        '.bin',
+        '.msi',
+        '.7z',
+      ];
+      let ext = '';
+      defaults.forEach((v, i) => {
+        const compare = url.toLowerCase().indexOf(v.toLowerCase()) !== -1;
+        if (compare) {
+          ext = v;
+        }
+      });
+      const fileWithExt = fileName + ext;
+      const file = fs.createWriteStream('public/' + fileWithExt);
       const request = https.get(url, function (response) {
         response.pipe(file);
         const len = parseInt(response.headers['content-length'], 10);
-        const cur = 0;
+        let cur = 0;
         const total = len / 1048576;
-        const body = '';
-        // response.on('data', function (chunk) {
-        //   body += chunk;
-        //   cur += chunk.length;
-        //   console.log(
-        //     'Downloading ' + ((100.0 * cur) / len).toFixed(2) + '% ' + (cur / 1048576).toFixed(2) + ' Total size: ' + total.toFixed(2) + ' ',
-        //   );
-        // });
+        let body = '';
+        response.on('data', function (chunk) {
+          body += chunk;
+          cur += chunk.length;
+          // console.log(
+          body = 'Downloading ' + ((100.0 * cur) / len).toFixed(2) + '% ' + (cur / 1048576).toFixed(2) + ' Total size: ' + total.toFixed(2) + ' ';
+          // );
+        });
+        const interval = setInterval(() => {
+          if (body != '') {
+            console.log(body);
+          } else {
+            clearInterval(interval);
+            console.log('Interval Cleared');
+          }
+        }, 5000);
 
         // after download completed close filestream
         file.on('finish', () => {
           file.close();
           console.log('Download Completed');
+          body = '';
         });
       });
-      // const target_url = url;
-      // const file_name = path.basename(urls.parse(target_url).pathname);
-
-      // const downloader = new mtd('public/' + fileNameWithExt, target_url);
-      // downloader.start();
     } catch (error) {
       console.log(error);
     }
