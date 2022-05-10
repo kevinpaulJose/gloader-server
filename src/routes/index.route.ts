@@ -3,8 +3,8 @@ import IndexController from '@controllers/index.controller';
 import { Routes } from '@interfaces/routes.interface';
 
 class IndexRoute implements Routes {
-  public path = '/upload';
-  public pathUrl = '/url';
+  // public path = '/upload';
+  public pathUrl = '/cloudSave';
   public router = Router();
   public indexController = new IndexController();
 
@@ -13,7 +13,7 @@ class IndexRoute implements Routes {
   }
 
   private initializeRoutes() {
-    this.router.post(`${this.path}`, this.indexController.index);
+    // this.router.post(`${this.path}`, this.indexController.index);
     this.router.post(`${this.pathUrl}`, this.indexController.downloadUrl);
   }
 }
