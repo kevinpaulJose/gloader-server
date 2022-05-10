@@ -4,16 +4,15 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
 import { FireService } from '@/services/firebase.services';
+import { url } from 'inspector';
 require('events').EventEmitter.prototype._maxListeners = 0;
 
 const driveClientId = process.env.GOOGLE_DRIVE_CLIENT_ID || '';
 const driveClientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET || '';
 const driveRedirectUri = process.env.GOOGLE_DRIVE_REDIRECT_URI || '';
 // const driveRefreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN || '';
-let status = 'pending';
 
 class IndexController {
-  status = 'uploading';
   upload = async ({ folderFromApi, fileNameFromApi, token, id, downloadId, userId }) => {
     const fireService = new FireService();
     await fireService.addUploads(id, userId, fileNameFromApi, downloadId, folderFromApi);
@@ -45,20 +44,28 @@ class IndexController {
 
       console.info('File uploaded successfully!');
       // Delete the file on the server
-      status = 'uploaded';
-      await fireService.updateUploads(id, 'Completed');
 
       fs.unlinkSync(finalPath);
+
+      await fireService.updateUploads(id, 'Completed');
+      let pendingDownloads = await fireService.getAllDownloads(userId);
+      pendingDownloads = pendingDownloads.filter((v, i) => {
+        return v.status == 'Pending';
+      });
+
+      if (pendingDownloads.length >= 1) {
+        this.download({
+          url: pendingDownloads[0].url,
+          fileName: pendingDownloads[0].fileName,
+          folderName: pendingDownloads[0].folderName,
+          id: pendingDownloads[0].id,
+          token: pendingDownloads[0].token,
+          userId: pendingDownloads[0].userId,
+        });
+      }
     })();
   };
-  private download = ({ res, next, url, fileName, id, userId, folderName, token }) => {
-    try {
-      res.send({
-        status: 'Started',
-      });
-    } catch (error) {
-      next(error);
-    }
+  private download = async ({ url, fileName, id, userId, folderName, token }) => {
     try {
       // const defaults = [
       //   '.mp4',
@@ -89,73 +96,85 @@ class IndexController {
       //   }
       // });
       // const fileWithExt = fileName + ext;
-      const file = fs.createWriteStream('public/' + userId + '_' + fileName);
+
       const fireService = new FireService();
-      fireService.addDownloads(id, userId, url, fileName).then(() => {
-        const dnld = https.get(url, response => {
-          response.pipe(file);
-          const len = parseInt(response.headers['content-length'], 10);
-          let cur = 0;
-          const total = len / 1048576;
-          let body = '';
-          response.on('data', function (chunk) {
-            body += chunk;
-            cur += chunk.length;
-            // console.log(
-            body = 'Downloading ' + ((100.0 * cur) / len).toFixed(2) + '% ' + (cur / 1048576).toFixed(2) + ' Total size: ' + total.toFixed(2) + ' ';
-            // );
-          });
-          const interval = setInterval(async () => {
-            if (body != '') {
-              const entry = await fireService.getDownloads(id);
-              if (entry[0].stopped) {
-                file.close();
-                // dnld._destroy((e, e1) => {});
-                console.log('Download interupted');
-                dnld.end();
-                fs.unlinkSync('public/' + userId + '_' + fileName);
+      let ongoingDownloads = await fireService.getAllDownloads(userId);
+      let ongoingUploads = await fireService.getAllUploads(userId);
+      ongoingUploads = ongoingUploads.filter((v, i) => {
+        return v.status == 'Uploading';
+      });
+      ongoingDownloads = ongoingDownloads.filter((v, i) => {
+        return v.status == 'Downloading';
+      });
+      if (ongoingDownloads.length >= 1 || ongoingUploads.length >= 1) {
+        await fireService.addDownloads(id, userId, url, fileName, 'Pending', folderName, token);
+      } else {
+        const file = fs.createWriteStream('public/' + userId + '_' + fileName);
+        fireService.addDownloads(id, userId, url, fileName, 'Uploading', folderName, token).then(() => {
+          const dnld = https.get(url, response => {
+            response.pipe(file);
+            const len = parseInt(response.headers['content-length'], 10);
+            let cur = 0;
+            const total = len / 1048576;
+            let body = '';
+            response.on('data', function (chunk) {
+              body += chunk;
+              cur += chunk.length;
+              // console.log(
+              body = 'Downloading ' + ((100.0 * cur) / len).toFixed(2) + '% ' + (cur / 1048576).toFixed(2) + ' Total size: ' + total.toFixed(2) + ' ';
+              // );
+            });
+            const interval = setInterval(async () => {
+              if (body != '') {
+                const entry = await fireService.getDownloads(id);
+                if (entry[0].stopped) {
+                  file.close();
+                  // dnld._destroy((e, e1) => {});
+                  console.log('Download interupted');
+                  dnld.end();
+                  fs.unlinkSync('public/' + userId + '_' + fileName);
+                  clearInterval(interval);
+                  console.log('Interval Cleared');
+                } else {
+                  await fireService.updateDownloads(
+                    id,
+                    (cur / 1048576).toFixed(2).toString(),
+                    ((100.0 * cur) / len).toFixed(2) + '% ',
+                    'Downloading',
+                    total.toFixed(2).toString(),
+                    folderName,
+                    fileName,
+                    token,
+                    userId,
+                    false,
+                  );
+                }
+              } else {
                 clearInterval(interval);
                 console.log('Interval Cleared');
-              } else {
-                await fireService.updateDownloads(
-                  id,
-                  (cur / 1048576).toFixed(2).toString(),
-                  ((100.0 * cur) / len).toFixed(2) + '% ',
-                  'Downloading',
-                  total.toFixed(2).toString(),
-                  folderName,
-                  fileName,
-                  token,
-                  userId,
-                  false,
-                );
               }
-            } else {
-              clearInterval(interval);
-              console.log('Interval Cleared');
-            }
-          }, 6000);
-
-          file.on('finish', async () => {
-            const entry = await fireService.getDownloads(id);
-            file.close();
-            console.log('Download Completed');
-            await fireService.updateDownloads(
-              id,
-              (cur / 1048576).toFixed(2).toString(),
-              ((100.0 * cur) / len).toFixed(2) + '% ',
-              'Completed',
-              total.toFixed(2).toString(),
-              folderName,
-              fileName,
-              token,
-              userId,
-              entry[0].stopped,
-            );
-            body = '';
+            }, 6000);
+            file.on('finish', async () => {
+              const entry = await fireService.getDownloads(id);
+              file.close();
+              console.log('Download Completed');
+              await fireService.updateDownloads(
+                id,
+                (cur / 1048576).toFixed(2).toString(),
+                ((100.0 * cur) / len).toFixed(2) + '% ',
+                'Completed',
+                total.toFixed(2).toString(),
+                folderName,
+                fileName,
+                token,
+                userId,
+                entry[0].stopped,
+              );
+              body = '';
+            });
           });
         });
-      });
+      }
     } catch (error) {
       console.log(error);
     }
@@ -171,9 +190,14 @@ class IndexController {
   //   });
   // };
   public downloadUrl = (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.send({
+        status: 'Started',
+      });
+    } catch (error) {
+      next(error);
+    }
     this.download({
-      res: res,
-      next: next,
       url: req.body.url,
       fileName: req.body.filename,
       id: req.body.id,

@@ -3,7 +3,7 @@ import { firedb } from '@/databases/firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc } from 'firebase/firestore';
 
 export class FireService {
-  async addDownloads(id: String, userId: String, url: String, fileName: String) {
+  async addDownloads(id: String, userId: String, url: String, fileName: String, status: String, folderName: String, token: String) {
     try {
       const docRef = await addDoc(collection(firedb, 'downloads'), {
         id: id,
@@ -12,10 +12,12 @@ export class FireService {
         completed: '0',
         fileName: fileName,
         percentage: '0',
-        status: 'pending',
+        status: status,
         total: '0',
         added: Timestamp.fromDate(new Date()),
         stopped: false,
+        folderName: folderName,
+        token: token,
       });
       console.log('Download Document written with ID: ', docRef.id);
     } catch (e) {
@@ -25,6 +27,16 @@ export class FireService {
   async getDownloads(id: String) {
     const downloadRef = collection(firedb, 'downloads');
     const q = query(downloadRef, where('id', '==', id));
+    const querySnapshot = await getDocs(q);
+    const retData = [];
+    querySnapshot.forEach(doc => {
+      retData.push(doc.data());
+    });
+    return retData;
+  }
+  async getAllDownloads(userId: String) {
+    const downloadRef = collection(firedb, 'downloads');
+    const q = query(downloadRef, where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
     const retData = [];
     querySnapshot.forEach(doc => {
@@ -72,6 +84,16 @@ export class FireService {
     } catch (e) {
       console.error('Error adding Upload document: ', e);
     }
+  }
+  async getAllUploads(userId: String) {
+    const downloadRef = collection(firedb, 'uploads');
+    const q = query(downloadRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    const retData = [];
+    querySnapshot.forEach(doc => {
+      retData.push(doc.data());
+    });
+    return retData;
   }
   async updateUploads(id: String, status: String) {
     const uploadRef = collection(firedb, 'uploads');
