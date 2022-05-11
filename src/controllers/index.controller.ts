@@ -4,7 +4,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
 import { FireService } from '@/services/firebase.services';
-import { url } from 'inspector';
 require('events').EventEmitter.prototype._maxListeners = 0;
 
 const driveClientId = process.env.GOOGLE_DRIVE_CLIENT_ID || '';
@@ -48,22 +47,28 @@ class IndexController {
       fs.unlinkSync(finalPath);
 
       await fireService.updateUploads(id, 'Completed');
-      let pendingDownloads = await fireService.getAllDownloads(userId);
-      pendingDownloads = pendingDownloads.filter((v, i) => {
-        return v.status == 'Pending';
-      });
-
-      if (pendingDownloads.length >= 1) {
-        this.download({
-          url: pendingDownloads[0].url,
-          fileName: pendingDownloads[0].fileName,
-          folderName: pendingDownloads[0].folderName,
-          id: pendingDownloads[0].id,
-          token: pendingDownloads[0].token,
-          userId: pendingDownloads[0].userId,
-        });
-      }
+      this.checkPendingAndUpdate(userId);
     })();
+  };
+  checkPendingAndUpdate = async userId => {
+    console.log('Checking for downloads');
+    const fireService = new FireService();
+    let pendingDownloads = await fireService.getAllDownloads(userId);
+    pendingDownloads = pendingDownloads.filter(v => {
+      return v.status == 'Pending' && !v.stopped;
+    });
+
+    if (pendingDownloads.length >= 1) {
+      console.log('Downloading pending downloads');
+      this.download({
+        url: pendingDownloads[0].url,
+        fileName: pendingDownloads[0].fileName,
+        folderName: pendingDownloads[0].folderName,
+        id: pendingDownloads[0].id,
+        token: pendingDownloads[0].token,
+        userId: pendingDownloads[0].userId,
+      });
+    }
   };
   private download = async ({ url, fileName, id, userId, folderName, token }) => {
     try {
@@ -100,10 +105,10 @@ class IndexController {
       const fireService = new FireService();
       let ongoingDownloads = await fireService.getAllDownloads(userId);
       let ongoingUploads = await fireService.getAllUploads(userId);
-      ongoingUploads = ongoingUploads.filter((v, i) => {
+      ongoingUploads = ongoingUploads.filter(v => {
         return v.status == 'Uploading';
       });
-      ongoingDownloads = ongoingDownloads.filter((v, i) => {
+      ongoingDownloads = ongoingDownloads.filter(v => {
         return v.status == 'Downloading';
       });
       if (ongoingDownloads.length >= 1 || ongoingUploads.length >= 1) {
@@ -147,6 +152,7 @@ class IndexController {
                     fileName,
                     token,
                     userId,
+                    entry[0].stopped,
                     false,
                   );
                 }
@@ -155,6 +161,42 @@ class IndexController {
                 console.log('Interval Cleared');
               }
             }, 6000);
+            dnld.on('error', async err => {
+              fs.unlinkSync('public/' + userId + '_' + fileName);
+              console.log(err);
+              const entry = await fireService.getDownloads(id);
+              await fireService.updateDownloads(
+                id,
+                (cur / 1048576).toFixed(2).toString(),
+                ((100.0 * cur) / len).toFixed(2) + '% ',
+                'Completed',
+                total.toFixed(2).toString(),
+                folderName,
+                fileName,
+                token,
+                userId,
+                entry[0].stopped,
+                true,
+              );
+            });
+            file.on('error', async err => {
+              fs.unlinkSync('public/' + userId + '_' + fileName);
+              console.log(err);
+              const entry = await fireService.getDownloads(id);
+              await fireService.updateDownloads(
+                id,
+                (cur / 1048576).toFixed(2).toString(),
+                ((100.0 * cur) / len).toFixed(2) + '% ',
+                'Completed',
+                total.toFixed(2).toString(),
+                folderName,
+                fileName,
+                token,
+                userId,
+                entry[0].stopped,
+                true,
+              );
+            });
             file.on('finish', async () => {
               const entry = await fireService.getDownloads(id);
               file.close();
@@ -170,6 +212,7 @@ class IndexController {
                 token,
                 userId,
                 entry[0].stopped,
+                false,
               );
               body = '';
             });

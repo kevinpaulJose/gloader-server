@@ -5707,7 +5707,7 @@
     "systeminformation" "^5.7"
     "tx2" "~1.0.4"
 
-"pm2@^5.1.0":
+"pm2@^5.2.0":
   "integrity" "sha512-PO5hMVhQ85cTszFM++6v07Me9hPJMkFbHjkFigtMMk+La8ty2wCi2dlBTeZYJDhPUSjK8Ccltpq2buNRcyMOTw=="
   "resolved" "https://registry.npmjs.org/pm2/-/pm2-5.2.0.tgz"
   "version" "5.2.0"

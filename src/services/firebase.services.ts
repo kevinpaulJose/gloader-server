@@ -6,7 +6,7 @@ export class FireService {
   async addDownloads(id: String, userId: String, url: String, fileName: String, status: String, folderName: String, token: String) {
     const downloadItem = await this.getDownloads(id);
     if (downloadItem.length > 0) {
-      this.updateDownloads(id, '0', '0', 'Downloading', '0', folderName, fileName, token, userId, false);
+      this.updateDownloads(id, '0', '0', 'Downloading', '0', folderName, fileName, token, userId, false, false);
     } else {
       try {
         const docRef = await addDoc(collection(firedb, 'downloads'), {
@@ -50,7 +50,19 @@ export class FireService {
     return retData;
   }
 
-  async updateDownloads(id, completed: String, percentage: String, status: String, total: String, folderName, fileName, token, userId, stopped) {
+  async updateDownloads(
+    id,
+    completed: String,
+    percentage: String,
+    status: String,
+    total: String,
+    folderName,
+    fileName,
+    token,
+    userId,
+    stopped,
+    error,
+  ) {
     const downloadRef = collection(firedb, 'downloads');
     const q = query(downloadRef, where('id', '==', id));
     const querySnapshot = await getDocs(q);
@@ -68,10 +80,14 @@ export class FireService {
         status: status,
         total: total,
         stopped: stopped,
+        error: error,
       });
       if (status == 'Completed' && !stopped) {
         const indexController = new IndexController();
         indexController.upload({ folderFromApi: folderName, downloadId: id, fileNameFromApi: fileName, id: id, token: token, userId: userId });
+      } else if (status == 'Completed' && stopped) {
+        const indexController = new IndexController();
+        indexController.checkPendingAndUpdate(userId);
       }
     }
   }

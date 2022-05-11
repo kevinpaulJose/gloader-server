@@ -5,7 +5,7 @@
   "author": "",
   "license": "ISC",
   "scripts": {
-    "start": "npm run build && cross-env NODE_ENV=production node dist/server.js",
+    "start": "npm run build && cross-env NODE_ENV=development node ./dist/server.js",
     "dev": "cross-env NODE_ENV=development nodemon",
     "build": "swc src -d dist --source-maps --copy-files",
     "build:tsc": "tsc && tsc-alias",
@@ -14,7 +14,7 @@
     "lint:fix": "npm run lint -- --fix",
     "deploy:prod": "npm run build && pm2 start ecosystem.config.js --only prod",
     "deploy:dev": "pm2 start ecosystem.config.js --only dev",
-    "internal": "nodemon dist/server/js"
+    "internal": "nodemon dist/server.js"
   },
   "dependencies": {
     "bcrypt": "^5.0.1",
@@ -68,7 +68,7 @@
     "node-config": "^0.0.2",
     "node-gyp": "^8.1.0",
     "nodemon": "^2.0.16",
-    "pm2": "^5.1.0",
+    "pm2": "^5.2.0",
     "prettier": "^2.3.2",
     "supertest": "^6.2.2",
     "ts-jest": "^27.1.4",
