@@ -19,7 +19,7 @@ class IndexController {
       const googleDriveService = new GoogleDriveService(driveClientId, driveClientSecret, driveRedirectUri, token);
       const folderName = folderFromApi;
       const fileName = fileNameFromApi;
-      const finalPath = path.resolve(__dirname, '../../public/' + userId + '_' + fileName);
+      const finalPath = path.resolve(__dirname, '../../public/' + downloadId + '_' + fileName);
       if (!fs.existsSync(finalPath)) {
         throw new Error('File not found!');
       }
@@ -115,7 +115,7 @@ class IndexController {
         await fireService.addDownloads(id, userId, url, fileName, 'Pending', folderName, token);
         // update if already there
       } else {
-        const file = fs.createWriteStream('public/' + userId + '_' + fileName);
+        const file = fs.createWriteStream('public/' + id + '_' + fileName);
         fireService.addDownloads(id, userId, url, fileName, 'Downloading', folderName, token).then(() => {
           const dnld = https.get(url, response => {
             response.pipe(file);
@@ -138,7 +138,7 @@ class IndexController {
                   // dnld._destroy((e, e1) => {});
                   console.log('Download interupted');
                   dnld.end();
-                  fs.unlinkSync('public/' + userId + '_' + fileName);
+                  fs.unlinkSync('public/' + id + '_' + fileName);
                   clearInterval(interval);
                   console.log('Interval Cleared');
                 } else {
@@ -162,7 +162,7 @@ class IndexController {
               }
             }, 6000);
             dnld.on('error', async err => {
-              fs.unlinkSync('public/' + userId + '_' + fileName);
+              fs.unlinkSync('public/' + id + '_' + fileName);
               console.log(err);
               const entry = await fireService.getDownloads(id);
               await fireService.updateDownloads(
@@ -180,7 +180,7 @@ class IndexController {
               );
             });
             file.on('error', async err => {
-              fs.unlinkSync('public/' + userId + '_' + fileName);
+              fs.unlinkSync('public/' + id + '_' + fileName);
               console.log(err);
               const entry = await fireService.getDownloads(id);
               await fireService.updateDownloads(
