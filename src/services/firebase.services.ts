@@ -73,9 +73,27 @@ export class FireService {
 
     if (status == 'Completed' && !stopped) {
       const indexController = new IndexController();
+      const docRef = doc(firedb, 'downloads', docId);
+      await updateDoc(docRef, {
+        completed: completed,
+        percentage: percentage,
+        status: status,
+        total: total,
+        stopped: stopped,
+        error: error,
+      });
       indexController.upload({ folderFromApi: folderName, downloadId: id, fileNameFromApi: fileName, id: id, token: token, userId: userId });
     } else if (status == 'Completed' && stopped) {
       const indexController = new IndexController();
+      const docRef = doc(firedb, 'downloads', docId);
+      await updateDoc(docRef, {
+        completed: completed,
+        percentage: percentage,
+        status: status,
+        total: total,
+        stopped: stopped,
+        error: error,
+      });
       indexController.checkPendingAndUpdate(userId);
     } else {
       const docRef = doc(firedb, 'downloads', docId);

@@ -146,7 +146,7 @@ class IndexController {
                     id,
                     (cur / 1048576).toFixed(2).toString(),
                     ((100.0 * cur) / len).toFixed(2) + '% ',
-                    'Downloading',
+                    entry[0].status,
                     total.toFixed(2).toString(),
                     folderName,
                     fileName,
