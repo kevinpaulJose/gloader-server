@@ -67,12 +67,17 @@ export class FireService {
     const q = query(downloadRef, where('id', '==', id));
     const querySnapshot = await getDocs(q);
     let docId = '';
-    let count = 0;
     querySnapshot.forEach(doc => {
       docId = doc.id;
-      count++;
     });
-    if (count != 0) {
+
+    if (status == 'Completed' && !stopped) {
+      const indexController = new IndexController();
+      indexController.upload({ folderFromApi: folderName, downloadId: id, fileNameFromApi: fileName, id: id, token: token, userId: userId });
+    } else if (status == 'Completed' && stopped) {
+      const indexController = new IndexController();
+      indexController.checkPendingAndUpdate(userId);
+    } else {
       const docRef = doc(firedb, 'downloads', docId);
       await updateDoc(docRef, {
         completed: completed,
@@ -82,13 +87,6 @@ export class FireService {
         stopped: stopped,
         error: error,
       });
-      if (status == 'Completed' && !stopped) {
-        const indexController = new IndexController();
-        indexController.upload({ folderFromApi: folderName, downloadId: id, fileNameFromApi: fileName, id: id, token: token, userId: userId });
-      } else if (status == 'Completed' && stopped) {
-        const indexController = new IndexController();
-        indexController.checkPendingAndUpdate(userId);
-      }
     }
   }
   async addUploads(id: String, userId: String, fileName: String, downloadId: String, path: String) {
