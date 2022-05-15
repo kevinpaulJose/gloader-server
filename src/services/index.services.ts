@@ -29,7 +29,7 @@ export class GoogleDriveService {
   createDriveClient(clientId: string, clientSecret: string, redirectUri: string, refreshToken: string) {
     const client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
-    client.setCredentials({ access_token: refreshToken });
+    client.setCredentials({ refresh_token: refreshToken });
 
     return google.drive({
       version: 'v3',
