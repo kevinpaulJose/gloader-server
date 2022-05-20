@@ -67,10 +67,11 @@ class IndexController {
         id: pendingDownloads[0].id,
         token: pendingDownloads[0].token,
         userId: pendingDownloads[0].userId,
+        img: pendingDownloads[0].img,
       });
     }
   };
-  private download = async ({ url, fileName, id, userId, folderName, token }) => {
+  private download = async ({ url, fileName, id, userId, folderName, token, img }) => {
     try {
       // const defaults = [
       //   '.mp4',
@@ -112,11 +113,11 @@ class IndexController {
         return v.status == 'Downloading';
       });
       if (ongoingDownloads.length >= 1 || ongoingUploads.length >= 1) {
-        await fireService.addDownloads(id, userId, url, fileName, 'Pending', folderName, token);
+        await fireService.addDownloads(id, userId, url, fileName, 'Pending', folderName, token, img);
         // update if already there
       } else {
         const file = fs.createWriteStream('public/' + id + '_' + fileName);
-        fireService.addDownloads(id, userId, url, fileName, 'Downloading', folderName, token).then(() => {
+        fireService.addDownloads(id, userId, url, fileName, 'Downloading', folderName, token, img).then(() => {
           const dnld = https.get(url, response => {
             response.pipe(file);
             const len = parseInt(response.headers['content-length'], 10);
@@ -248,6 +249,7 @@ class IndexController {
       userId: req.body.userId,
       folderName: req.body.folderName,
       token: req.body.token,
+      img: req.body.img,
     });
   };
 }

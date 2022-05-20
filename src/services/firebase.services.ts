@@ -3,7 +3,7 @@ import { firedb } from '@/databases/firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc } from 'firebase/firestore';
 
 export class FireService {
-  async addDownloads(id: String, userId: String, url: String, fileName: String, status: String, folderName: String, token: String) {
+  async addDownloads(id: String, userId: String, url: String, fileName: String, status: String, folderName: String, token: String, img: String) {
     const downloadItem = await this.getDownloads(id);
     if (downloadItem.length > 0) {
       this.updateDownloads(id, '0', '0', 'Downloading', '0', folderName, fileName, token, userId, false, false);
@@ -22,6 +22,7 @@ export class FireService {
           stopped: false,
           folderName: folderName,
           token: token,
+          img: img,
         });
         console.log('Download Document written with ID: ', docRef.id);
       } catch (e) {
