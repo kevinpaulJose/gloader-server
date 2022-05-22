@@ -22,7 +22,7 @@ class IndexController {
         const fileName = fileNameFromApi;
         const finalPath = path.resolve(__dirname, '../../public/' + downloadId + '_' + fileName);
         if (!fs.existsSync(finalPath)) {
-          throw new Error('File not found!');
+          console.log('error');
         }
         let folder = await googleDriveService.searchFolder(folderName).catch(error => {
           console.error(error);
