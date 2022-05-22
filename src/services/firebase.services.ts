@@ -83,7 +83,11 @@ export class FireService {
         stopped: stopped,
         error: error,
       });
-      indexController.upload({ folderFromApi: folderName, downloadId: id, fileNameFromApi: fileName, id: id, token: token, userId: userId });
+      try {
+        indexController.upload({ folderFromApi: folderName, downloadId: id, fileNameFromApi: fileName, id: id, token: token, userId: userId });
+      } catch (err) {
+        console.log(err);
+      }
     } else if (status == 'Completed' && stopped) {
       const indexController = new IndexController();
       const docRef = doc(firedb, 'downloads', docId);

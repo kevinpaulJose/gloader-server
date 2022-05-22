@@ -13,43 +13,50 @@ const driveRedirectUri = process.env.GOOGLE_DRIVE_REDIRECT_URI || '';
 
 class IndexController {
   upload = async ({ folderFromApi, fileNameFromApi, token, id, downloadId, userId }) => {
-    const fireService = new FireService();
-    await fireService.addUploads(id, userId, fileNameFromApi, downloadId, folderFromApi);
-    (async () => {
-      const googleDriveService = new GoogleDriveService(driveClientId, driveClientSecret, driveRedirectUri, token);
-      const folderName = folderFromApi;
-      const fileName = fileNameFromApi;
-      const finalPath = path.resolve(__dirname, '../../public/' + downloadId + '_' + fileName);
-      if (!fs.existsSync(finalPath)) {
-        throw new Error('File not found!');
-      }
-      let folder = await googleDriveService.searchFolder(folderName).catch(error => {
-        console.error(error);
-        return null;
-      });
-      let folderId = '';
-      if (!folder) {
-        await fireService.updateUploads(id, 'Creating folder');
-        folder = await googleDriveService.createFolder(folderName);
-        folderId = folder.data.id;
-      } else {
-        folderId = folder.id;
-      }
-      await fireService.updateUploads(id, 'Uploading');
-      await googleDriveService.saveFile(fileName, finalPath, 'video/mp4', folderId).catch(async error => {
-        console.error(error);
-        await fireService.updateUploads(id, 'Error');
-      });
+    try {
+      const fireService = new FireService();
+      await fireService.addUploads(id, userId, fileNameFromApi, downloadId, folderFromApi);
+      (async () => {
+        const googleDriveService = new GoogleDriveService(driveClientId, driveClientSecret, driveRedirectUri, token);
+        const folderName = folderFromApi;
+        const fileName = fileNameFromApi;
+        const finalPath = path.resolve(__dirname, '../../public/' + downloadId + '_' + fileName);
+        if (!fs.existsSync(finalPath)) {
+          throw new Error('File not found!');
+        }
+        let folder = await googleDriveService.searchFolder(folderName).catch(error => {
+          console.error(error);
+          return null;
+        });
+        let folderId = '';
+        if (!folder) {
+          await fireService.updateUploads(id, 'Creating folder');
+          folder = await googleDriveService.createFolder(folderName);
+          folderId = folder.data.id;
+        } else {
+          folderId = folder.id;
+        }
+        await fireService.updateUploads(id, 'Uploading');
+        await googleDriveService.saveFile(fileName, finalPath, 'video/mp4', folderId).catch(async error => {
+          console.error(error);
+          await fireService.updateUploads(id, 'Error');
+        });
 
-      console.info('File uploaded successfully!');
-      // Delete the file on the server
+        console.info('File uploaded successfully!');
+        // Delete the file on the server
 
-      fs.unlinkSync(finalPath);
+        fs.unlinkSync(finalPath);
 
-      await fireService.updateUploads(id, 'Completed');
-      this.checkPendingAndUpdate(userId);
-    })();
+        await fireService.updateUploads(id, 'Completed');
+        this.checkPendingAndUpdate(userId);
+      })();
+    } catch (error) {
+      console.log(error);
+      const fireService = new FireService();
+      fireService.updateUploads(id, 'Error');
+    }
   };
+
   checkPendingAndUpdate = async userId => {
     console.log('Checking for downloads');
     const fireService = new FireService();
@@ -239,18 +246,29 @@ class IndexController {
       res.send({
         status: 'Started',
       });
+      this.download({
+        url: req.body.url,
+        fileName: req.body.filename,
+        id: req.body.id,
+        userId: req.body.userId,
+        folderName: req.body.folderName,
+        token: req.body.token,
+        img: req.body.img,
+      });
     } catch (error) {
       next(error);
     }
-    this.download({
-      url: req.body.url,
-      fileName: req.body.filename,
-      id: req.body.id,
-      userId: req.body.userId,
-      folderName: req.body.folderName,
-      token: req.body.token,
-      img: req.body.img,
-    });
+  };
+
+  public testAPI = (req: Request, res: Response, next: NextFunction) => {
+    console.log(req.body);
+    try {
+      res.send({
+        data: req.body,
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 }
 
