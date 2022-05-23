@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
+import * as http from 'http';
 import { FireService } from '@/services/firebase.services';
 require('events').EventEmitter.prototype._maxListeners = 0;
 
@@ -125,106 +126,237 @@ class IndexController {
       } else {
         const file = fs.createWriteStream('public/' + id + '_' + fileName);
         fireService.addDownloads(id, userId, url, fileName, 'Downloading', folderName, token, img).then(() => {
-          const dnld = https.get(url, response => {
-            response.pipe(file);
-            const len = parseInt(response.headers['content-length'], 10);
-            let cur = 0;
-            const total = len / 1048576;
-            let body = '';
-            response.on('data', function (chunk) {
-              body += chunk;
-              cur += chunk.length;
-              // console.log(
-              body = 'Downloading ' + ((100.0 * cur) / len).toFixed(2) + '% ' + (cur / 1048576).toFixed(2) + ' Total size: ' + total.toFixed(2) + ' ';
-              // );
-            });
-            const interval = setInterval(async () => {
-              if (body != '') {
-                const entry = await fireService.getDownloads(id);
-                if (entry[0].stopped) {
-                  file.close();
-                  // dnld._destroy((e, e1) => {});
-                  console.log('Download interupted');
-                  dnld.end();
-                  fs.unlinkSync('public/' + id + '_' + fileName);
+          const httpsChecker = url.split('://')[0];
+          console.log(httpsChecker);
+          if (httpsChecker == 'https') {
+            const dnld = https.get(url, response => {
+              response.pipe(file);
+              const len = parseInt(response.headers['content-length'], 10);
+              let cur = 0;
+              const total = len / 1048576;
+              let body = '';
+              response.on('data', function (chunk) {
+                body += chunk;
+                cur += chunk.length;
+                // console.log(
+                body =
+                  'Downloading ' + ((100.0 * cur) / len).toFixed(2) + '% ' + (cur / 1048576).toFixed(2) + ' Total size: ' + total.toFixed(2) + ' ';
+                // );
+              });
+              const interval = setInterval(async () => {
+                if (body != '') {
+                  const entry = await fireService.getDownloads(id);
+                  if (entry[0].stopped) {
+                    file.close();
+                    // dnld._destroy((e, e1) => {});
+                    console.log('Download interupted');
+                    dnld.end();
+                    try {
+                      fs.unlinkSync('public/' + id + '_' + fileName);
+                    } catch (err) {
+                      console.log(err);
+                    }
+                    clearInterval(interval);
+                    console.log('Interval Cleared');
+                  } else {
+                    await fireService.updateDownloads(
+                      id,
+                      (cur / 1048576).toFixed(2).toString(),
+                      ((100.0 * cur) / len).toFixed(2) + '% ',
+                      entry[0].status,
+                      total.toFixed(2).toString(),
+                      folderName,
+                      fileName,
+                      token,
+                      userId,
+                      entry[0].stopped,
+                      false,
+                    );
+                  }
+                } else {
                   clearInterval(interval);
                   console.log('Interval Cleared');
-                } else {
-                  await fireService.updateDownloads(
-                    id,
-                    (cur / 1048576).toFixed(2).toString(),
-                    ((100.0 * cur) / len).toFixed(2) + '% ',
-                    entry[0].status,
-                    total.toFixed(2).toString(),
-                    folderName,
-                    fileName,
-                    token,
-                    userId,
-                    entry[0].stopped,
-                    false,
-                  );
                 }
-              } else {
-                clearInterval(interval);
-                console.log('Interval Cleared');
-              }
-            }, 6000);
-            dnld.on('error', async err => {
-              fs.unlinkSync('public/' + id + '_' + fileName);
-              console.log(err);
-              const entry = await fireService.getDownloads(id);
-              await fireService.updateDownloads(
-                id,
-                (cur / 1048576).toFixed(2).toString(),
-                ((100.0 * cur) / len).toFixed(2) + '% ',
-                'Completed',
-                total.toFixed(2).toString(),
-                folderName,
-                fileName,
-                token,
-                userId,
-                entry[0].stopped,
-                true,
-              );
+              }, 6000);
+              dnld.on('error', async err => {
+                try {
+                  fs.unlinkSync('public/' + id + '_' + fileName);
+                } catch (err) {
+                  console.log(err);
+                }
+                console.log(err);
+                const entry = await fireService.getDownloads(id);
+                await fireService.updateDownloads(
+                  id,
+                  (cur / 1048576).toFixed(2).toString(),
+                  ((100.0 * cur) / len).toFixed(2) + '% ',
+                  'Completed',
+                  total.toFixed(2).toString(),
+                  folderName,
+                  fileName,
+                  token,
+                  userId,
+                  entry[0].stopped,
+                  true,
+                );
+              });
+              file.on('error', async err => {
+                try {
+                  fs.unlinkSync('public/' + id + '_' + fileName);
+                } catch (err) {
+                  console.log(err);
+                }
+                console.log(err);
+                const entry = await fireService.getDownloads(id);
+                await fireService.updateDownloads(
+                  id,
+                  (cur / 1048576).toFixed(2).toString(),
+                  ((100.0 * cur) / len).toFixed(2) + '% ',
+                  'Completed',
+                  total.toFixed(2).toString(),
+                  folderName,
+                  fileName,
+                  token,
+                  userId,
+                  entry[0].stopped,
+                  true,
+                );
+              });
+              file.on('finish', async () => {
+                const entry = await fireService.getDownloads(id);
+                file.close();
+                console.log('Download Completed');
+                await fireService.updateDownloads(
+                  id,
+                  (cur / 1048576).toFixed(2).toString(),
+                  ((100.0 * cur) / len).toFixed(2) + '% ',
+                  'Completed',
+                  total.toFixed(2).toString(),
+                  folderName,
+                  fileName,
+                  token,
+                  userId,
+                  entry[0].stopped,
+                  false,
+                );
+                body = '';
+              });
             });
-            file.on('error', async err => {
-              fs.unlinkSync('public/' + id + '_' + fileName);
-              console.log(err);
-              const entry = await fireService.getDownloads(id);
-              await fireService.updateDownloads(
-                id,
-                (cur / 1048576).toFixed(2).toString(),
-                ((100.0 * cur) / len).toFixed(2) + '% ',
-                'Completed',
-                total.toFixed(2).toString(),
-                folderName,
-                fileName,
-                token,
-                userId,
-                entry[0].stopped,
-                true,
-              );
+          } else {
+            const dnld = http.get(url, response => {
+              response.pipe(file);
+              const len = parseInt(response.headers['content-length'], 10);
+              let cur = 0;
+              const total = len / 1048576;
+              let body = '';
+              response.on('data', function (chunk) {
+                body += chunk;
+                cur += chunk.length;
+                // console.log(
+                body =
+                  'Downloading ' + ((100.0 * cur) / len).toFixed(2) + '% ' + (cur / 1048576).toFixed(2) + ' Total size: ' + total.toFixed(2) + ' ';
+                // );
+              });
+              const interval = setInterval(async () => {
+                if (body != '') {
+                  const entry = await fireService.getDownloads(id);
+                  if (entry[0].stopped) {
+                    file.close();
+                    // dnld._destroy((e, e1) => {});
+                    console.log('Download interupted');
+                    dnld.end();
+                    try {
+                      fs.unlinkSync('public/' + id + '_' + fileName);
+                    } catch (err) {
+                      console.log(err);
+                    }
+                    clearInterval(interval);
+                    console.log('Interval Cleared');
+                  } else {
+                    await fireService.updateDownloads(
+                      id,
+                      (cur / 1048576).toFixed(2).toString(),
+                      ((100.0 * cur) / len).toFixed(2) + '% ',
+                      entry[0].status,
+                      total.toFixed(2).toString(),
+                      folderName,
+                      fileName,
+                      token,
+                      userId,
+                      entry[0].stopped,
+                      false,
+                    );
+                  }
+                } else {
+                  clearInterval(interval);
+                  console.log('Interval Cleared');
+                }
+              }, 6000);
+              dnld.on('error', async err => {
+                try {
+                  fs.unlinkSync('public/' + id + '_' + fileName);
+                } catch (err) {
+                  console.log(err);
+                }
+                console.log(err);
+                const entry = await fireService.getDownloads(id);
+                await fireService.updateDownloads(
+                  id,
+                  (cur / 1048576).toFixed(2).toString(),
+                  ((100.0 * cur) / len).toFixed(2) + '% ',
+                  'Completed',
+                  total.toFixed(2).toString(),
+                  folderName,
+                  fileName,
+                  token,
+                  userId,
+                  entry[0].stopped,
+                  true,
+                );
+              });
+              file.on('error', async err => {
+                try {
+                  fs.unlinkSync('public/' + id + '_' + fileName);
+                } catch (err) {
+                  console.log(err);
+                }
+                console.log(err);
+                const entry = await fireService.getDownloads(id);
+                await fireService.updateDownloads(
+                  id,
+                  (cur / 1048576).toFixed(2).toString(),
+                  ((100.0 * cur) / len).toFixed(2) + '% ',
+                  'Completed',
+                  total.toFixed(2).toString(),
+                  folderName,
+                  fileName,
+                  token,
+                  userId,
+                  entry[0].stopped,
+                  true,
+                );
+              });
+              file.on('finish', async () => {
+                const entry = await fireService.getDownloads(id);
+                file.close();
+                console.log('Download Completed');
+                await fireService.updateDownloads(
+                  id,
+                  (cur / 1048576).toFixed(2).toString(),
+                  ((100.0 * cur) / len).toFixed(2) + '% ',
+                  'Completed',
+                  total.toFixed(2).toString(),
+                  folderName,
+                  fileName,
+                  token,
+                  userId,
+                  entry[0].stopped,
+                  false,
+                );
+                body = '';
+              });
             });
-            file.on('finish', async () => {
-              const entry = await fireService.getDownloads(id);
-              file.close();
-              console.log('Download Completed');
-              await fireService.updateDownloads(
-                id,
-                (cur / 1048576).toFixed(2).toString(),
-                ((100.0 * cur) / len).toFixed(2) + '% ',
-                'Completed',
-                total.toFixed(2).toString(),
-                folderName,
-                fileName,
-                token,
-                userId,
-                entry[0].stopped,
-                false,
-              );
-              body = '';
-            });
-          });
+          }
         });
       }
     } catch (error) {

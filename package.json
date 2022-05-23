@@ -6,7 +6,7 @@
   "license": "ISC",
   "scripts": {
     "start": "npm run build && cross-env NODE_ENV=development node ./dist/server.js",
-    "dev": "cross-env NODE_ENV=development nodemon ./dist/server.js",
+    "dev": "npm run build:tsc && cross-env NODE_ENV=development forever ./dist/server.js",
     "build": "swc src -d dist --source-maps --copy-files",
     "build:tsc": "tsc && tsc-alias",
     "test": "jest --forceExit --detectOpenHandles",
@@ -30,6 +30,7 @@
     "googleapis": "^100.0.0",
     "helmet": "^4.6.0",
     "hpp": "^0.2.3",
+    "http": "^0.0.1-security",
     "https": "^1.0.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.10.1",
