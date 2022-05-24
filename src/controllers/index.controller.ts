@@ -38,7 +38,58 @@ class IndexController {
           folderId = folder.id;
         }
         await fireService.updateUploads(id, 'Uploading');
-        await googleDriveService.saveFile(fileName, finalPath, 'video/mp4', folderId).catch(async error => {
+        let mimetype = 'application/octet-stream';
+        const ext = fileName.split('.').pop().toLowerCase();
+        switch (ext) {
+          case 'avi':
+            mimetype = 'video/x-msvideo';
+            break;
+          case 'bin':
+            mimetype = 'application/octet-stream';
+            break;
+          case 'html' || 'htm':
+            mimetype = 'text/html';
+            break;
+          case 'mpeg':
+            mimetype = 'video/mpeg';
+            break;
+          case 'ogv':
+            mimetype = 'video/ogg';
+            break;
+          case 'rar':
+            mimetype = 'application/vnd.rar';
+            break;
+          case 'ts':
+            mimetype = 'video/mp2t';
+            break;
+          case 'webm':
+            mimetype = 'video/webm';
+            break;
+          case 'zip':
+            mimetype = 'application/zip';
+            break;
+          case '7g':
+            mimetype = 'application/x-7z-compressed';
+            break;
+          case 'mp4':
+            mimetype = 'video/mp4';
+            break;
+          case 'tar':
+            mimetype = 'application/x-tar';
+            break;
+          case 'mov':
+            mimetype = 'video/quicktime';
+            break;
+          case 'wmv':
+            mimetype = 'video/x-ms-wmv';
+            break;
+          case 'mkv':
+            mimetype = 'video/x-matroska';
+            break;
+          default:
+            mimetype = 'application/octet-stream';
+        }
+        await googleDriveService.saveFile(fileName, finalPath, mimetype, folderId).catch(async error => {
           console.error(error);
           await fireService.updateUploads(id, 'Error');
         });
