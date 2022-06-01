@@ -1,6 +1,7 @@
 import fs from 'fs';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { google } from 'googleapis';
+import { FireService } from './firebase.services';
 
 /**
  * Browse the link below to see the complete object returned for folder/file creation and search
@@ -84,9 +85,11 @@ export class GoogleDriveService {
     }
   }
 
-  saveFile(fileName: string, filePath: string, fileMimeType: string, folderId?: string) {
+  async saveFile(fileName: string, filePath: string, fileMimeType: string, folderId: string, id: string) {
     try {
       console.log(folderId + ' - From back');
+      const fireService = new FireService();
+      await fireService.updateUploads(id, 'pending', folderId);
       return this.driveClient.files.create({
         requestBody: {
           name: fileName,
