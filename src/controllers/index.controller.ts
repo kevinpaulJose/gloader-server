@@ -89,13 +89,10 @@ class IndexController {
           default:
             mimetype = 'application/octet-stream';
         }
-        await googleDriveService
-          .saveFile(fileName, finalPath, mimetype, folderId)
-          .then(res => console.log(res))
-          .catch(async error => {
-            console.error(error);
-            await fireService.updateUploads(id, 'Error');
-          });
+        await googleDriveService.saveFile(fileName, finalPath, mimetype, folderId).catch(async error => {
+          console.error(error);
+          await fireService.updateUploads(id, 'Error');
+        });
 
         console.info('File uploaded successfully!');
         // Delete the file on the server
