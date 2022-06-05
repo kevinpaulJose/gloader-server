@@ -121,6 +121,7 @@ export class FireService {
         status: 'pending',
         downloadId: downloadId,
         path: path,
+        folderId: 'null',
       });
       console.log('Upload Document written with ID: ', docRef.id);
     } catch (e) {
@@ -137,7 +138,7 @@ export class FireService {
     });
     return retData;
   }
-  async updateUploads(id: String, status: String) {
+  async updateUploads(id: String, status: String, folderId) {
     const uploadRef = collection(firedb, 'uploads');
     const q = query(uploadRef, where('id', '==', id));
     const querySnapshot = await getDocs(q);
@@ -147,9 +148,17 @@ export class FireService {
     });
     if (docId != undefined) {
       const docRef = doc(firedb, 'uploads', docId);
-      await updateDoc(docRef, {
-        status: status,
-      });
+      if (folderId != 'null') {
+        await updateDoc(docRef, {
+          status: status,
+          folderId: folderId,
+        });
+      } else {
+        await updateDoc(docRef, {
+          status: status,
+          folderId_null: 'null',
+        });
+      }
     }
   }
 }

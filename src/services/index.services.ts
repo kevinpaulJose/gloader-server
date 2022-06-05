@@ -201,7 +201,7 @@ export class GoogleDriveService {
       const fireService = new FireService();
       await this.updateDownloads(fileSize, 'Completed', fileSize, id);
       await fireService.addUploads(id, userId, fileName, id, folderName);
-      await fireService.updateUploads(id, 'Completed');
+      await fireService.updateUploads(id, 'Completed', folderId);
       console.log('Completed');
       // return true;
     } catch (error) {

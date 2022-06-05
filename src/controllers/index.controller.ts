@@ -31,13 +31,13 @@ class IndexController {
         });
         let folderId = '';
         if (!folder) {
-          await fireService.updateUploads(id, 'Creating folder');
+          await fireService.updateUploads(id, 'Creating folder', 'null');
           folder = await googleDriveService.createFolder(folderName);
           folderId = folder.data.id;
         } else {
           folderId = folder.id;
         }
-        await fireService.updateUploads(id, 'Uploading');
+        await fireService.updateUploads(id, 'Uploading', 'null');
         let mimetype = 'application/octet-stream';
         const ext = fileName.split('.').pop().toLowerCase();
         switch (ext) {
@@ -99,13 +99,13 @@ class IndexController {
 
         fs.unlinkSync(finalPath);
 
-        await fireService.updateUploads(id, 'Completed');
+        await fireService.updateUploads(id, 'Completed', 'null');
         this.checkPendingAndUpdate(userId);
       })();
     } catch (error) {
       console.log(error);
       const fireService = new FireService();
-      fireService.updateUploads(id, 'Error');
+      fireService.updateUploads(id, 'Error', 'null');
     }
   };
 
