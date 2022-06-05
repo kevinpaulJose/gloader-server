@@ -89,10 +89,10 @@ class IndexController {
           default:
             mimetype = 'application/octet-stream';
         }
-        await googleDriveService.saveFile(fileName, finalPath, mimetype, folderId).catch(async error => {
-          console.error(error);
-          await fireService.updateUploads(id, 'Error');
-        });
+        // await googleDriveService.saveFile(fileName, finalPath, mimetype, folderId).catch(async error => {
+        //   console.error(error);
+        //   await fireService.updateUploads(id, 'Error');
+        // });
 
         console.info('File uploaded successfully!');
         // Delete the file on the server
@@ -132,36 +132,6 @@ class IndexController {
   };
   private download = async ({ url, fileName, id, userId, folderName, token, img }) => {
     try {
-      // const defaults = [
-      //   '.mp4',
-      //   '.mp3',
-      //   '.mov',
-      //   '.wmv',
-      //   '.avi',
-      //   '.mkv',
-      //   '.webm',
-      //   '.mp3',
-      //   '.aac',
-      //   '.wav',
-      //   '.jpeg',
-      //   '.raw',
-      //   '.zip',
-      //   '.rar',
-      //   '.pdf',
-      //   '.exe',
-      //   '.bin',
-      //   '.msi',
-      //   '.7z',
-      // ];
-      // let ext = '';
-      // defaults.forEach((v, i) => {
-      //   const compare = url.toLowerCase().indexOf(v.toLowerCase()) !== -1;
-      //   if (compare) {
-      //     ext = v;
-      //   }
-      // });
-      // const fileWithExt = fileName + ext;
-
       const fireService = new FireService();
       let ongoingDownloads = await fireService.getAllDownloads(userId);
       let ongoingUploads = await fireService.getAllUploads(userId);
@@ -452,6 +422,96 @@ class IndexController {
     } catch (error) {
       next(error);
     }
+  };
+
+  public testDnld = async req => {
+    // const fireService = new FireService();
+    // if (!folder) {
+    // await fireService.updateUploads(id, 'Creating folder');
+    let mimetype = 'application/octet-stream';
+    const ext = req.body.fileName.split('.').pop().toLowerCase();
+    switch (ext) {
+      case 'avi':
+        mimetype = 'video/x-msvideo';
+        break;
+      case 'bin':
+        mimetype = 'application/octet-stream';
+        break;
+      case 'html' || 'htm':
+        mimetype = 'text/html';
+        break;
+      case 'mpeg':
+        mimetype = 'video/mpeg';
+        break;
+      case 'ogv':
+        mimetype = 'video/ogg';
+        break;
+      case 'rar':
+        mimetype = 'application/vnd.rar';
+        break;
+      case 'ts':
+        mimetype = 'video/mp2t';
+        break;
+      case 'webm':
+        mimetype = 'video/webm';
+        break;
+      case 'zip':
+        mimetype = 'application/zip';
+        break;
+      case '7g':
+        mimetype = 'application/x-7z-compressed';
+        break;
+      case 'mp4':
+        mimetype = 'video/mp4';
+        break;
+      case 'tar':
+        mimetype = 'application/x-tar';
+        break;
+      case 'mov':
+        mimetype = 'video/quicktime';
+        break;
+      case 'wmv':
+        mimetype = 'video/x-ms-wmv';
+        break;
+      case 'mkv':
+        mimetype = 'video/x-matroska';
+        break;
+      default:
+        mimetype = 'application/octet-stream';
+    }
+
+    const googleDriveService = new GoogleDriveService(driveClientId, driveClientSecret, driveRedirectUri, req.body.token);
+    let folder = await googleDriveService.searchFolder(req.body.folderName).catch(error => {
+      console.error(error);
+      return null;
+    });
+    let folderId = '';
+    if (!folder) {
+      // await fireService.updateUploads(id, 'Creating folder');
+      folder = await googleDriveService.createFolder(req.body.folderName);
+      folderId = folder.data.id;
+    } else {
+      folderId = folder.id;
+    }
+    googleDriveService.saveFile(
+      req.body.fileName,
+      req.body.url,
+      mimetype,
+      req.body.img,
+      req.body.fileSize,
+      req.body.id,
+      req.body.userId,
+      req.body.folderName,
+      req.body.token,
+      folderId,
+    );
+    // console.log(folderId);
+  };
+  public testDownload = async (req: Request, res: Response, next: NextFunction) => {
+    await this.testDnld(req);
+    res.send({
+      data: req.body,
+    });
   };
 }
 
